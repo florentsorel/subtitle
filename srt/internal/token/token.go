@@ -15,5 +15,6 @@ const (
 	ARROW     = "ARROW"
 	TEXT      = "TEXT"
 	EOL       = "EOL"
+	EOC       = "EOC"
 	EOF       = "EOF"
 )

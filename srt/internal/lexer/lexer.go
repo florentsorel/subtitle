@@ -52,9 +52,15 @@ func (l *Lexer) NextToken() token.Token {
 	switch {
 	case unicode.IsDigit(l.ch):
 		return l.lexNumberOrTimestamp()
-	case l.ch == '\n':
+	case l.ch == '\n' && l.nextChar() == '\n':
+		line := l.line
 		l.readChar()
-		return token.Token{Type: token.EOL, Literal: "\n", Line: l.line, Column: 0}
+		l.readChar()
+		return token.Token{Type: token.EOC, Literal: "\n\n", Line: line, Column: 0}
+	case l.ch == '\n':
+		line := l.line
+		l.readChar()
+		return token.Token{Type: token.EOL, Literal: "\n", Line: line, Column: 0}
 	case l.ch == '-' && l.nextChar() == '-' && l.peekAhead(2) == '>':
 		startPos := l.position
 		line := l.line
