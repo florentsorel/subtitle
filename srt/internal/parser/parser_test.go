@@ -16,6 +16,10 @@ func TestNewParser(t *testing.T) {
 			expectedError: "expected INDEX, got ARROW at line 1, column 1",
 		},
 		{
+			input:         `First line`,
+			expectedError: "expected INDEX, got TEXT at line 1, column 1",
+		},
+		{
 			input:         `00:00:01,123`,
 			expectedError: "expected INDEX, got TIMESTAMP at line 1, column 1",
 		},
@@ -30,22 +34,29 @@ func TestNewParser(t *testing.T) {
 		},
 		{
 			input: `1
-00:00:01,123 00:00:01,456`,
-			expectedError: "expected ARROW, got TIMESTAMP at line 2, column 14",
-		},
-		{
-			input: `1
-00:00:01,123 --> hello`,
-			expectedError: "expected TIMESTAMP, got TEXT at line 2, column 18",
+00:00:01,123 --> 00:00:01,456
+First line
+Second line
+2
+00:00:01,123 --> 00:00:01,456
+First line`,
+			expectedError: "expected EOC, got INDEX at line 5, column 1",
 		},
 		{
 			input: `1
 00:00:01,123 --> 00:00:01,456
 First line
 Second line
-
 -->`,
-			expectedError: "expected INDEX, got ARROW at line 6, column 1",
+			expectedError: "expected EOC, got ARROW at line 5, column 1",
+		},
+		{
+			input: `1
+00:00:01,123 --> 00:00:01,456
+First line
+Second line
+00:00:01,123`,
+			expectedError: "expected EOC, got TIMESTAMP at line 5, column 1",
 		},
 		{
 			input: `1
@@ -65,10 +76,16 @@ text`,
 00:00:01,123 --> 00:00:01,456
 First line
 Second line
+
 2
 00:00:01,123 --> 00:00:01,456
-First line`,
-			expectedError: "expected EOL (EOB), got TIMESTAMP at line 5, column 1",
+First line
+
+3
+00:00:01,123 --> 00:00:01,456
+text
+toto`,
+			expectedError: "",
 		},
 	}
 
@@ -77,7 +94,11 @@ First line`,
 		p := New(l)
 		_, err := p.Parse()
 
-		if err == nil || err.Error() != tt.expectedError {
+		if tt.expectedError == "" {
+			if err != nil {
+				t.Fatalf("test[%d] - expected no error, got=%q.", i, err)
+			}
+		} else if err == nil || err.Error() != tt.expectedError {
 			t.Fatalf("test[%d] - expected=%q, got=%q.", i, tt.expectedError, err)
 		}
 	}

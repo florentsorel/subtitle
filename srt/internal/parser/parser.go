@@ -17,6 +17,7 @@ type Parser struct {
 	nextToken    token.Token
 }
 
+// New creates a new Parser instance and initializes it with the first two tokens.
 func New(l *lexer.Lexer) *Parser {
 	p := &Parser{lexer: l}
 	p.readToken()
@@ -24,13 +25,15 @@ func New(l *lexer.Lexer) *Parser {
 	return p
 }
 
+// readToken advances the parser to the next token, updating currentToken and nextToken.
 func (p *Parser) readToken() {
 	p.currentToken = p.nextToken
 	p.nextToken = p.lexer.NextToken()
 }
 
-func (p *Parser) Parse() ([]subtitle.Subtitle, error) {
-	var subs []subtitle.Subtitle
+// Parse processes the input tokens and returns a slice of Cue.
+func (p *Parser) Parse() ([]subtitle.Cue, error) {
+	var subs []subtitle.Cue
 
 	for p.currentToken.Type != token.EOF {
 		cue, err := p.parseCue()
@@ -43,8 +46,9 @@ func (p *Parser) Parse() ([]subtitle.Subtitle, error) {
 	return subs, nil
 }
 
-func (p *Parser) parseCue() (subtitle.Subtitle, error) {
-	var s subtitle.Subtitle
+// parseCue parses a single subtitle cue from the current token stream.
+func (p *Parser) parseCue() (subtitle.Cue, error) {
+	var s subtitle.Cue
 
 	// Index
 	if p.currentToken.Type != token.INDEX {
@@ -67,7 +71,7 @@ func (p *Parser) parseCue() (subtitle.Subtitle, error) {
 	if p.currentToken.Type != token.TIMESTAMP {
 		return s, fmt.Errorf("expected TIMESTAMP, got %s at line %d, column %d", p.currentToken.Type, p.currentToken.Line, p.currentToken.Column)
 	}
-	startTime, err := parseTimestamp(p.currentToken.Literal)
+	startTime, err := ParseTimestamp(p.currentToken.Literal)
 	if err != nil {
 		return s, err
 	}
@@ -86,7 +90,7 @@ func (p *Parser) parseCue() (subtitle.Subtitle, error) {
 	if p.currentToken.Type != token.TIMESTAMP {
 		return s, fmt.Errorf("expected TIMESTAMP, got %s at line %d, column %d", p.currentToken.Type, p.currentToken.Line, p.currentToken.Column)
 	}
-	endTime, err := parseTimestamp(p.currentToken.Literal)
+	endTime, err := ParseTimestamp(p.currentToken.Literal)
 	if err != nil {
 		return s, err
 	}
@@ -94,30 +98,29 @@ func (p *Parser) parseCue() (subtitle.Subtitle, error) {
 
 	p.readToken()
 
+	// Text
 	var textLines []string
-	for p.currentToken.Type != token.EOF && p.currentToken.Type != token.INDEX {
-		switch p.currentToken.Type {
-		case token.TEXT:
+	for p.currentToken.Type == token.TEXT || p.currentToken.Type == token.EOL {
+		if p.currentToken.Type == token.TEXT {
 			textLines = append(textLines, p.currentToken.Literal)
-		case token.EOL:
-			if p.nextToken.Type == token.TEXT {
-				textLines = append(textLines, "")
-			}
 		}
-		p.readToken()
-	}
 
-	if p.currentToken.Type == token.INDEX {
-		p.currentToken = p.nextToken
-		p.nextToken = p.lexer.NextToken()
+		p.readToken()
 	}
 
 	s.Text = strings.Join(textLines, "\n")
 
+	// End of cue
+	if p.currentToken.Type != token.EOC && p.currentToken.Type != token.EOF {
+		return s, fmt.Errorf("expected EOC, got %s at line %d, column %d", p.currentToken.Type, p.currentToken.Line, p.currentToken.Column)
+	}
+
+	p.readToken()
+
 	return s, nil
 }
 
-func parseTimestamp(s string) (time.Time, error) {
+func ParseTimestamp(s string) (time.Time, error) {
 	normalized := strings.Replace(s, ",", ".", 1)
 	const layout = "15:04:05.000"
 
