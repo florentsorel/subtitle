@@ -11,6 +11,8 @@ func TestNewLexer(t *testing.T) {
 00:00:01,123 --> 00:00:01,456
 Text block éè
 Second line
+
+2
 `
 
 	tests := []struct {
@@ -28,8 +30,10 @@ Second line
 		{token.TEXT, "Text block éè", 3, 1},
 		{token.EOL, "\n", 4, 0},
 		{token.TEXT, "Second line", 4, 1},
-		{token.EOL, "\n", 5, 0},
-		{token.EOF, "", 5, 0},
+		{token.EOC, "\n\n", 5, 0},
+		{token.INDEX, "2", 6, 1},
+		{token.EOL, "\n", 7, 0},
+		{token.EOF, "", 7, 0},
 	}
 
 	lexer := New(input)
